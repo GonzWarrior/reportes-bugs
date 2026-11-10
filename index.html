@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0d1015">
+  <title>Reportes de errores</title>
+  <meta name="description" content="Reportá los errores que encuentres en el servidor y seguí su estado.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m8 2 1.88 1.88M14.12 3.88 16 2M9 7.13v-1a3 3 0 1 1 6 0v1'/%3E%3Cpath fill='%233b82f633' d='M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6'/%3E%3Cpath d='M12 20v-9M6.53 9C4.6 8.8 3 7.1 3 5M6 13H2M3 21c0-2.1 1.7-3.9 3.8-4M20.97 5c0 2.1-1.6 3.8-3.5 4M22 13h-4M17.2 17c2.1.1 3.8 1.9 3.8 4'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <div class="envoltorio">
+
+    <header class="top">
+      <div class="marca">
+        <span class="insignia chica"><span data-icono="bug"></span></span>
+        <span class="marca-nombre" id="titulo">Reportes de errores</span>
+      </div>
+      <div class="top-acciones">
+        <a class="btn fantasma" id="btnDiscord" hidden target="_blank" rel="noopener"><span data-icono="mensaje"></span><span class="txt">Discord</span></a>
+        <div class="cuenta-caja">
+          <button class="btn borde" id="btnCuenta" type="button" aria-haspopup="menu" aria-expanded="false"><span class="txt">Entrar</span></button>
+          <div class="menu" id="menuCuenta" role="menu" hidden>
+            <div class="menu-cab">Conectado como <b id="menuUsuario"></b></div>
+            <button type="button" role="menuitem" data-menu="mios"><span data-icono="lista"></span>Mis reportes</button>
+            <button type="button" role="menuitem" data-menu="salir"><span data-icono="salir"></span>Salir</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="hero" id="hero">
+      <div class="hero-texto">
+        <span class="hero-etiqueta"><span class="punto vivo"></span>Ayudanos a mejorar el servidor</span>
+        <h1>¿Encontraste un <span class="resalte">error</span>?</h1>
+        <p id="subtitulo">Contanos qué pasó en menos de un minuto. El staff lo revisa y acá vas a ver cuando quede arreglado.</p>
+        <div class="resumen" id="stats" aria-label="Resumen">
+          <button type="button" class="chip-stat est-pendiente" data-pestana="abiertos"><span class="punto"></span><b id="stPendiente">0</b> pendientes</button>
+          <button type="button" class="chip-stat est-en_progreso" data-pestana="abiertos"><span class="punto"></span><b id="stEn_progreso">0</b> en progreso</button>
+          <button type="button" class="chip-stat est-arreglado" data-pestana="arreglados"><span class="punto"></span><b id="stArreglado">0</b> arreglados<span class="extra" id="stSemana"></span></button>
+          <span hidden id="stDescartado"></span>
+        </div>
+        <ol class="pasos-linea" aria-label="Cómo funciona">
+          <li><span class="paso-n">1</span>Lo contás</li>
+          <li><span class="paso-n">2</span>El staff lo revisa</li>
+          <li><span class="paso-n">3</span>Queda arreglado</li>
+        </ol>
+      </div>
+
+      <form class="rapido" id="formRapido" novalidate>
+        <div class="rapido-cab">
+          <span class="insignia flota"><span data-icono="bug"></span></span>
+          <div><b>Reportalo en 3 toques</b><span>Escribí qué pasó, elegí el tema y listo.</span></div>
+        </div>
+        <label class="rapido-paso"><span class="paso-n">1</span>¿Qué pasó?</label>
+        <input class="campo grande" id="rapidoTitulo" maxlength="120" placeholder="Ej.: El auto se da vuelta solo" autocomplete="off">
+        <div class="rapido-paso"><span class="paso-n">2</span>¿De qué se trata?</div>
+        <div class="chips compactos" id="rapidoCats" role="radiogroup" aria-label="Tema"></div>
+        <button class="btn principal grande ancho" type="submit"><span class="paso-n claro">3</span>Seguir<span data-icono="der"></span></button>
+        <button class="enlace" type="button" id="btnNuevo">o abrir el formulario completo</button>
+      </form>
+    </section>
+
+    <button class="fab" id="fab" type="button" aria-label="Reportar un error"><span data-icono="mas"></span><span class="txt">Reportar</span></button>
+
+    <div class="aviso" id="avisoDemo" hidden>
+      <span data-icono="alerta"></span>
+      <div>
+        <b>Modo demo.</b> Todavía no está conectada la base de datos: los reportes se guardan solo en este navegador.
+        Completá <code>js/config.js</code> siguiendo el <code>LEEME.md</code>. Admin de prueba: usuario <code>admin</code>, contraseña <code>admin123</code>.
+      </div>
+    </div>
+
+    <main class="panel" id="reportes">
+      <div class="barra">
+        <nav class="pestanas" id="pestanas" aria-label="Secciones"></nav>
+        <div class="vistas" role="group" aria-label="Vista">
+          <button type="button" data-vista="lista" title="Lista"><span data-icono="lista"></span><span class="txt">Lista</span></button>
+          <button type="button" data-vista="tablero" title="Tablero por estado"><span data-icono="tablero"></span><span class="txt">Tablero</span></button>
+        </div>
+      </div>
+
+      <div class="herramientas">
+        <label class="buscador">
+          <span data-icono="buscar"></span>
+          <input class="campo" id="busqueda" type="search" placeholder="Buscar un error…" autocomplete="off">
+        </label>
+        <select class="campo" id="filtroCat" aria-label="Categoría"><option value="">Todos los temas</option></select>
+        <select class="campo" id="orden" aria-label="Orden">
+          <option value="recientes">Recientes</option>
+          <option value="votos">Más votados</option>
+          <option value="actualizados">Últimos movidos</option>
+          <option value="gravedad">Más graves</option>
+          <option value="antiguos">Más viejos</option>
+        </select>
+        <select class="campo solo-admin" id="filtroGrav" aria-label="Gravedad">
+          <option value="">Toda gravedad</option>
+          <option value="critica">Crítica</option>
+          <option value="alta">Alta</option>
+          <option value="media">Media</option>
+          <option value="baja">Baja</option>
+        </select>
+        <button class="btn solo-admin" id="btnExportar" type="button" title="Bajar los reportes en CSV"><span data-icono="bajar"></span>Exportar</button>
+        <button class="btn solo-admin" id="btnImportar" type="button" title="Importar un CSV (por ejemplo, de Notion)"><span data-icono="subir"></span>Importar</button>
+        <input type="file" id="archivoCSV" accept=".csv,text/csv" hidden>
+      </div>
+
+      <div id="lista" class="lista" aria-live="polite"></div>
+      <div id="tablero" class="tablero" hidden></div>
+    </main>
+
+    <footer class="pie-pagina" id="pie">La lista se actualiza sola cuando el staff cambia un reporte.</footer>
+  </div>
+
+  <!-- Nuevo reporte -->
+  <dialog id="dlgNuevo" class="grande" aria-labelledby="tituloNuevo">
+    <form class="dlg" id="formNuevo" novalidate>
+      <div class="dlg-cab">
+        <div>
+          <h2 id="tituloNuevo">Reportar un error</h2>
+          <p class="dlg-sub">Reportando como <b id="comoQuien"></b> · solo el título y el tema son obligatorios.</p>
+        </div>
+        <button class="btn icono" type="button" data-cerrar aria-label="Cerrar"><span data-icono="x"></span></button>
+      </div>
+      <div class="dlg-cuerpo">
+        <div class="pila amplia">
+          <label class="et">¿Qué pasó?
+            <input class="campo grande" name="titulo" maxlength="120" required placeholder="Ej.: No puedo robar la caja fuerte de la 24/7">
+          </label>
+
+          <div class="et">¿De qué se trata?
+            <div class="chips" id="chipsCat" role="radiogroup" aria-label="Tema"></div>
+          </div>
+
+          <label class="et">Contanos un poco más <span class="opcional">(opcional)</span>
+            <textarea class="campo" name="sucede" rows="3" maxlength="4000" placeholder="Qué estabas haciendo, qué pasó y qué esperabas que pase."></textarea>
+          </label>
+
+          <label class="et">¿Dónde pasó? <span class="opcional">(opcional)</span>
+            <input class="campo" name="donde" maxlength="200" placeholder="Ej.: Tienda 24/7 de Grove Street, menú de ropa…">
+          </label>
+
+          <div class="et">Capturas <span class="opcional">(opcional, hasta <span id="maxFotos">6</span>)</span>
+            <div class="zona" id="zonaFotos" tabindex="0" role="button" aria-label="Agregar capturas">
+              <span data-icono="imagen"></span>
+              <span><b>Tocá para elegir</b> o arrastralas acá. <span class="solo-pc">También podés pegar con <kbd>Ctrl</kbd> + <kbd>V</kbd>.</span></span>
+            </div>
+            <input type="file" id="archivoFotos" accept="image/*" multiple hidden>
+            <div class="previas" id="previas"></div>
+          </div>
+
+          <details class="mas-detalles" id="masDetalles">
+            <summary><span data-icono="der"></span>Agregar más detalles <span class="opcional">(opcional)</span></summary>
+            <div class="pila">
+              <div class="et">¿Qué tan grave es?
+                <div class="segmento" role="radiogroup" aria-label="Gravedad">
+                  <label class="seg"><input type="radio" name="gravedad" value="baja"><span>Molesta un poco</span></label>
+                  <label class="seg"><input type="radio" name="gravedad" value="media" checked><span>Normal</span></label>
+                  <label class="seg"><input type="radio" name="gravedad" value="alta"><span>Grave</span></label>
+                  <label class="seg seg-critica"><input type="radio" name="gravedad" value="critica"><span>No puedo jugar</span></label>
+                </div>
+              </div>
+              <label class="et">¿Qué debería pasar?
+                <textarea class="campo" name="esperado" rows="2" maxlength="2000" placeholder="Cómo debería funcionar."></textarea>
+              </label>
+              <label class="et">Pasos para que nos pase igual
+                <textarea class="campo" name="pasos" rows="3" maxlength="4000" placeholder="1. Entré a…&#10;2. Toqué…&#10;3. Pasó…"></textarea>
+              </label>
+              <label class="et">Notas o preguntas
+                <textarea class="campo" name="notas" rows="2" maxlength="2000" placeholder="Algo más que quieras agregar."></textarea>
+              </label>
+            </div>
+          </details>
+
+          <label class="trampa" aria-hidden="true">No completar <input name="web" tabindex="-1" autocomplete="off"></label>
+        </div>
+      </div>
+      <div class="dlg-pie">
+        <span class="pie-nota" id="notaBorrador"></span>
+        <button class="btn" type="button" data-cerrar>Cancelar</button>
+        <button class="btn principal" type="submit" id="btnEnviar"><span data-icono="enviar"></span><span class="txt">Enviar reporte</span></button>
+      </div>
+    </form>
+
+    <div class="dlg listo" id="pasoListo" hidden>
+      <div class="dlg-cab sin-borde">
+        <span></span>
+        <button class="btn icono" type="button" data-cerrar aria-label="Cerrar"><span data-icono="x"></span></button>
+      </div>
+      <div class="dlg-cuerpo listo-cuerpo">
+        <span class="listo-icono"><span data-icono="checkCirculo"></span></span>
+        <h2>¡Gracias! Ya lo recibimos</h2>
+        <p>Tu reporte es el <b id="listoNum">#0</b>. Lo vas a ver en <b>Abiertos</b> y, cuando el staff lo arregle, pasa solo a <b>Arreglados</b>.</p>
+        <div class="listo-acciones">
+          <button class="btn principal grande" type="button" id="listoVer">Ver mi reporte</button>
+          <button class="btn grande" type="button" id="listoOtro">Reportar otro</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Detalle -->
+  <dialog id="dlgDetalle" class="grande" aria-label="Detalle del reporte">
+    <div class="dlg">
+      <div class="dlg-cab">
+        <div class="det-pills" id="detPills"></div>
+        <button class="btn icono" type="button" data-cerrar aria-label="Cerrar"><span data-icono="x"></span></button>
+      </div>
+      <div class="dlg-cuerpo" id="detCuerpo"></div>
+    </div>
+  </dialog>
+
+  <!-- Login admin -->
+  <dialog id="dlgLogin" aria-labelledby="tituloLogin">
+    <form class="dlg" id="formLogin" novalidate>
+      <div class="dlg-cab">
+        <h2 id="tituloLogin">Entrar</h2>
+        <button class="btn icono" type="button" data-cerrar aria-label="Cerrar"><span data-icono="x"></span></button>
+      </div>
+      <div class="dlg-cuerpo pila">
+        <p class="motivo" id="motivoLogin" hidden></p>
+        <div class="segmento modos" id="modosLogin" role="tablist">
+          <button type="button" data-modo="entrar" class="activo">Entrar</button>
+          <button type="button" data-modo="crear">Crear cuenta</button>
+        </div>
+        <label class="et">Usuario
+          <input class="campo grande" name="usuario" maxlength="60" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="Ej.: Facu_09">
+        </label>
+        <label class="et">Contraseña
+          <input class="campo grande" name="clave" type="password" maxlength="72" autocomplete="current-password" placeholder="••••••">
+        </label>
+        <label class="et" id="filaClave2" hidden>Repetí la contraseña
+          <input class="campo grande" name="clave2" type="password" maxlength="72" autocomplete="new-password" placeholder="••••••">
+        </label>
+        <p class="ayuda" id="ayudaLogin"></p>
+      </div>
+      <div class="dlg-pie">
+        <button class="btn" type="button" data-cerrar>Cancelar</button>
+        <button class="btn principal" type="submit" id="btnEntrar">Entrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Confirmación -->
+  <dialog id="dlgConfirmar" aria-labelledby="tituloConfirmar">
+    <form class="dlg" method="dialog">
+      <div class="dlg-cab"><h2 id="tituloConfirmar">¿Seguro?</h2></div>
+      <div class="dlg-cuerpo"><p id="textoConfirmar" class="sin-margen"></p></div>
+      <div class="dlg-pie">
+        <button class="btn" value="no">Cancelar</button>
+        <button class="btn peligro" value="si" id="btnConfirmar">Confirmar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Visor de fotos -->
+  <dialog id="dlgVisor" aria-label="Foto ampliada">
+    <button class="btn icono visor-cerrar" type="button" data-cerrar aria-label="Cerrar"><span data-icono="x"></span></button>
+    <button class="btn icono visor-ant" type="button" id="visorAnt" aria-label="Anterior"><span data-icono="izq"></span></button>
+    <img id="visorImg" alt="">
+    <button class="btn icono visor-sig" type="button" id="visorSig" aria-label="Siguiente"><span data-icono="der"></span></button>
+    <div class="visor-pie"><span id="visorCuenta"></span><a id="visorAbrir" target="_blank" rel="noopener">Abrir original</a></div>
+  </dialog>
+
+  <div id="toasts" popover="manual" aria-live="polite"></div>
+
+  <script src="js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
