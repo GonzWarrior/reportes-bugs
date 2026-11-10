@@ -14,6 +14,11 @@
   <link rel="stylesheet" href="css/estilos.css">
 </head>
 <body>
+  <div class="progreso-scroll" aria-hidden="true"></div>
+  <div class="fondo-animado" aria-hidden="true">
+    <span class="aurora a1"></span><span class="aurora a2"></span><span class="aurora a3"></span>
+    <span class="grilla"></span>
+  </div>
   <div class="envoltorio">
 
     <header class="top">
@@ -43,16 +48,10 @@
         <span class="hero-etiqueta"><span class="punto vivo"></span>Ayudanos a mejorar el servidor</span>
         <h1>¿Encontraste un <span class="resalte">error</span>?</h1>
         <p id="subtitulo">Contanos qué pasó en menos de un minuto. El staff lo revisa y acá vas a ver cuando quede arreglado.</p>
-        <div class="resumen" id="stats" aria-label="Resumen">
-          <button type="button" class="chip-stat est-pendiente" data-pestana="abiertos"><span class="punto"></span><b id="stPendiente">0</b> pendientes</button>
-          <button type="button" class="chip-stat est-en_progreso" data-pestana="abiertos"><span class="punto"></span><b id="stEn_progreso">0</b> en progreso</button>
-          <button type="button" class="chip-stat est-arreglado" data-pestana="arreglados"><span class="punto"></span><b id="stArreglado">0</b> arreglados<span class="extra" id="stSemana"></span></button>
-          <span hidden id="stDescartado"></span>
-        </div>
-        <ol class="pasos-linea" aria-label="Cómo funciona">
-          <li><span class="paso-n">1</span>Lo contás</li>
-          <li><span class="paso-n">2</span>El staff lo revisa</li>
-          <li><span class="paso-n">3</span>Queda arreglado</li>
+        <ol class="pasos-cards" aria-label="Cómo funciona">
+          <li><span class="paso-ic"><span data-icono="enviar"></span></span><b>Lo contás</b><span>Título, tema y listo</span></li>
+          <li><span class="paso-ic"><span data-icono="escudo"></span></span><b>El staff lo revisa</b><span>Pasa a "En progreso"</span></li>
+          <li><span class="paso-ic"><span data-icono="checkCirculo"></span></span><b>Queda arreglado</b><span>Con respuesta del staff</span></li>
         </ol>
       </div>
 
@@ -84,10 +83,6 @@
     <main class="panel" id="reportes">
       <div class="barra">
         <nav class="pestanas" id="pestanas" aria-label="Secciones"></nav>
-        <div class="vistas" role="group" aria-label="Vista">
-          <button type="button" data-vista="lista" title="Lista"><span data-icono="lista"></span><span class="txt">Lista</span></button>
-          <button type="button" data-vista="tablero" title="Tablero por estado"><span data-icono="tablero"></span><span class="txt">Tablero</span></button>
-        </div>
       </div>
 
       <div class="herramientas">
@@ -110,6 +105,10 @@
           <option value="media">Media</option>
           <option value="baja">Baja</option>
         </select>
+        <div class="vistas" role="group" aria-label="Vista">
+          <button type="button" data-vista="lista" title="Ver como lista"><span data-icono="lista"></span></button>
+          <button type="button" data-vista="tablero" title="Ver como tablero por estado"><span data-icono="tablero"></span></button>
+        </div>
         <input type="file" id="archivoCSV" accept=".csv,text/csv" hidden>
       </div>
 
@@ -118,6 +117,20 @@
     </main>
 
     <aside class="lateral">
+      <section class="tarjeta-lateral">
+        <h3><span data-icono="tablero"></span>Estado de los reportes</h3>
+        <div class="resumen-lat" id="stats" aria-label="Resumen">
+          <button type="button" class="chip-stat est-pendiente" data-pestana="abiertos"><span class="punto"></span>Pendientes<b id="stPendiente">0</b></button>
+          <button type="button" class="chip-stat est-en_progreso" data-pestana="abiertos"><span class="punto"></span>En progreso<b id="stEn_progreso">0</b></button>
+          <button type="button" class="chip-stat est-arreglado" data-pestana="arreglados"><span class="punto"></span>Arreglados<b id="stArreglado">0</b></button>
+          <span hidden id="stDescartado"></span>
+        </div>
+        <div class="progreso-lat">
+          <div class="progreso-cab"><span>Arreglados</span><b id="stPorc">0%</b></div>
+          <div class="progreso-barra"><span id="stBarra"></span></div>
+          <small id="stSemana"></small>
+        </div>
+      </section>
       <section class="tarjeta-lateral">
         <h3><span data-icono="reloj"></span>Actividad reciente<span class="en-vivo"><span class="punto vivo"></span>En vivo</span></h3>
         <ol class="actividad" id="actividad"></ol>

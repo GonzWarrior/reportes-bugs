@@ -552,7 +552,11 @@ function renderConteos() {
   LISTA_ESTADOS.forEach(e => contar($('#st' + e[0].toUpperCase() + e.slice(1)), n[e]));
   const semana = Date.now() - 7 * 86400000;
   const arrSemana = E.reportes.filter(r => r.estado === 'arreglado' && r.cerrado && new Date(r.cerrado) >= semana).length;
-  $('#stSemana').textContent = arrSemana ? `${arrSemana} esta semana` : '';
+  $('#stSemana').textContent = arrSemana ? `${arrSemana} arreglado${arrSemana === 1 ? '' : 's'} esta semana` : 'Sin arreglos esta semana todavía';
+  const validos = n.pendiente + n.en_progreso + n.arreglado;
+  const porc = validos ? Math.round(n.arreglado / validos * 100) : 0;
+  $('#stPorc').textContent = porc + '%';
+  $('#stBarra').style.width = porc + '%';
 
   const nav = $('#pestanas');
   if (!nav.children.length) {
@@ -1672,6 +1676,22 @@ async function iniciar() {
     E.cargando = false; E.error = 'No se pudo cargar la librería de Supabase (¿bloqueador de anuncios o sin internet?).';
     render(); return;
   }
+  // Luz que sigue al mouse dentro de las tarjetas (solo con mouse, no en celular).
+  $$('.panel, .tarjeta-lateral, .rapido, .pasos-cards li').forEach(el => el.classList.add('spot'));
+  if (matchMedia('(hover: hover)').matches) {
+    let pendiente = null;
+    document.addEventListener('pointermove', ev => {
+      const el = ev.target.closest && ev.target.closest('.spot');
+      if (!el || pendiente) return;
+      pendiente = requestAnimationFrame(() => {
+        pendiente = null;
+        const r = el.getBoundingClientRect();
+        el.style.setProperty('--mx', (ev.clientX - r.left) + 'px');
+        el.style.setProperty('--my', (ev.clientY - r.top) + 'px');
+      });
+    }, { passive: true });
+  }
+
   // Las secciones aparecen suavemente cuando entran en pantalla (una sola vez).
   const revelar = $$('.revelar');
   if ('IntersectionObserver' in window) {
