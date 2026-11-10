@@ -122,7 +122,8 @@ const fechaLarga = f => new Date(f).toLocaleString('es-AR', { dateStyle: 'long',
 function toast(msg, tipo = 'info') {
   const cont = $('#toasts');
   const t = document.createElement('div');
-  t.className = 'toast t-' + tipo;
+  t.className = 'toast nuevo t-' + tipo;
+  setTimeout(() => t.classList.remove('nuevo'), 250);
   t.innerHTML = ic(tipo === 'error' ? 'alerta' : tipo === 'ok' ? 'checkCirculo' : 'info') + '<span></span>';
   t.querySelector('span').textContent = msg;
   cont.append(t);
@@ -327,7 +328,10 @@ function apiSupabase() {
     escuchar(cb) {
       sb.channel('reportes-cambios')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'reportes' }, p => cb(p.eventType, p.new, p.old))
-        .subscribe();
+        .subscribe((estado, err) => {
+          if (estado === 'SUBSCRIBED') console.info('[reportes] tiempo real conectado');
+          else if (estado !== 'CLOSED') console.warn('[reportes] tiempo real:', estado, err || '');
+        });
     },
   };
 }
@@ -350,7 +354,7 @@ function semillaDemo() {
     base({ id: 7, creado: dia(1, 2), titulo: 'Bolsos vacíos', categoria: 'items', gravedad: 'baja', donde: 'En general', sucede: 'Se quedan en el piso para siempre.', esperado: 'Deberían desaparecer los bolsos vacíos.', estado: 'arreglado', cerrado: dia(0, 3), actualizado: dia(0, 3), respuesta: 'Ahora se borran solos a los 5 minutos de quedar vacíos.', votos: 5 }),
     base({ id: 8, creado: dia(1, 1), titulo: 'CHOP CHOP', categoria: 'trabajos', gravedad: 'baja', donde: 'Chop chop (t20)', sucede: 'Se pueden sacar las puertas antes de terminar.', esperado: 'Poder sacar las puertas recién al final.', estado: 'descartado', cerrado: dia(0, 2), actualizado: dia(0, 2), respuesta: 'Es así a propósito: las puertas se venden aparte.' }),
     base({ id: 9, creado: dia(0, 6), titulo: 'Bug de caja fuerte', categoria: 'robos', gravedad: 'alta', donde: 'Tienda 24/7', sucede: 'Hay que interactuar varias veces y a veces no da nada.', esperado: 'Hacer el robo una sola vez y que pague.', votos: 2 }),
-  ];
+  ].map((r, i) => Object.assign(r, { autor: r.autor || ['Lauti', 'Mica', 'Santi', 'Juli', 'Tomi', 'Facu', 'Mica', 'Lauti'][i % 8] }));
 }
 
 function apiDemo() {
@@ -534,6 +538,7 @@ function pintarIconos(raiz = document) {
 
 function render() {
   renderConteos();
+  if (!E.cargando) renderLateral();
   $('#lista').hidden = E.vista !== 'lista';
   $('#tablero').hidden = E.vista !== 'tablero';
   $('#pestanas').hidden = E.vista === 'tablero';
@@ -595,27 +600,88 @@ function miniatura(r, clase) {
            : (clase === 'mini' ? `<span class="mini vacia">${ic('bug')}</span>` : '');
 }
 
+/* Avatar con la inicial y un color fijo por nombre (el mismo jugador siempre tiene el mismo color). */
+const TONOS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#f97316', '#84cc16'];
+function tono(nombre) {
+  let h = 0;
+  for (const ch of String(nombre || '?').toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return TONOS[h % TONOS.length];
+}
+function avatarHTML(nombre, clase = '') {
+  const n = String(nombre || 'Anónimo').trim() || 'Anónimo';
+  return `<span class="av ${clase}" style="--av:${tono(n)}" aria-hidden="true">${esc(n.charAt(0).toUpperCase())}</span>`;
+}
+const catDe = id => CFG.categorias.find(c => c.id === id) || { id, nombre: nombreCat(id) };
+
 function filaHTML(r, i = 0) {
   const descartado = r.estado === 'descartado' ? ' est-descartado-txt' : '';
-  return `<div class="fila${E.recien === r.id ? ' recien' : ''}" style="--i:${Math.min(i, 14)}" data-id="${r.id}" tabindex="0" role="button" aria-label="Abrir reporte ${r.id}: ${esc(r.titulo)}">
-    ${miniatura(r, 'mini')}
+  const autor = r.autor || 'Anónimo';
+  const foto = r.fotos && r.fotos[0];
+  return `<div class="fila${E.recien === r.id ? ' recien' : ''}" style="--i:${Math.min(i, 14)}" data-id="${r.id}" tabindex="0" role="button" aria-label="Abrir reporte ${r.id}: ${esc(r.titulo)}, de ${esc(autor)}">
+    ${avatarHTML(autor, 'av-fila')}
     <div class="fila-cuerpo">
-      <div class="fila-tit"><span class="num">#${r.id}</span><span class="txt${descartado}">${esc(r.titulo)}</span></div>
+      <div class="fila-tit"><span class="txt${descartado}">${esc(r.titulo)}</span></div>
       <div class="fila-sub">
-        ${r.donde ? `<span title="${esc(r.donde)}">${ic('pin')}${esc(r.donde)}</span>` : ''}
-        <span>${esc(nombreCat(r.categoria))}</span>
-        <span title="${esc(fechaLarga(r.creado))}">${ic('reloj')}${hace(r.creado)}</span>
-        ${r.autor ? `<span>${ic('usuario')}${esc(r.autor)}</span>` : ''}
+        <span class="quien" title="Reportado por ${esc(autor)}"><b>${esc(autor)}</b></span>
+        <span title="${esc(fechaLarga(r.creado))}"><i class="hace" data-hace="${esc(r.creado)}">${hace(r.creado)}</i></span>
+        <span class="tema">${ic(iconoCat(catDe(r.categoria)))}${esc(nombreCat(r.categoria))}</span>
+        ${r.donde ? `<span class="donde" title="${esc(r.donde)}">${ic('pin')}${esc(r.donde)}</span>` : ''}
+        <span class="num">#${r.id}</span>
       </div>
     </div>
     <div class="fila-datos">
+      ${foto ? `<span class="mini-foto" title="${r.fotos.length} foto${r.fotos.length === 1 ? '' : 's'}"><img src="${esc(E.api.urlFoto(foto))}" alt="" loading="lazy">${r.fotos.length > 1 ? `<b>+${r.fotos.length - 1}</b>` : ''}</span>` : ''}
       ${pillGrav(r.gravedad)}
       <span class="dato" title="A ${r.votos || 0} personas también les pasa">${ic('pulgar')}${r.votos || 0}</span>
       ${r.n_comentarios ? `<span class="dato" title="Comentarios">${ic('mensaje')}${r.n_comentarios}</span>` : ''}
-      ${r.fotos && r.fotos.length ? `<span class="dato" title="Fotos">${ic('imagen')}${r.fotos.length}</span>` : ''}
       ${pillEstado(r.estado)}
     </div>
   </div>`;
+}
+
+/* Panel lateral: lo último que pasó y quiénes más reportan. Solo se repinta si cambió algo. */
+let lateralPrevio = '';
+function renderLateral() {
+  const ev = [];
+  E.reportes.forEach(r => {
+    ev.push({ t: r.creado, r, tipo: 'nuevo' });
+    if (r.cerrado && !ABIERTOS.includes(r.estado)) ev.push({ t: r.cerrado, r, tipo: r.estado });
+    else if (r.estado === 'en_progreso') ev.push({ t: r.actualizado || r.creado, r, tipo: 'en_progreso' });
+  });
+  ev.sort((a, b) => new Date(b.t) - new Date(a.t));
+  const verbo = { nuevo: 'reportó', arreglado: 'arregló', descartado: 'descartó', en_progreso: 'está revisando' };
+  const act = ev.slice(0, 7).map(e => {
+    const staff = e.tipo !== 'nuevo';
+    const quien = staff ? 'Staff' : (e.r.autor || 'Anónimo');
+    return `<li data-id="${e.r.id}" tabindex="0" role="button" class="ev-${e.tipo}">
+      ${staff ? `<span class="av av-staff est-${e.tipo}">${ic(e.tipo === 'arreglado' ? 'check' : e.tipo === 'descartado' ? 'x' : 'escudo')}</span>` : avatarHTML(quien)}
+      <div><p><b>${esc(quien)}</b> ${verbo[e.tipo]} <span class="ev-tit">${esc(e.r.titulo)}</span></p>
+      <small><i class="hace" data-hace="${esc(e.t)}">${hace(e.t)}</i> · #${e.r.id}</small></div>
+    </li>`;
+  }).join('') || '<li class="lat-vacio">Todavía no pasó nada. ¡Reportá el primero!</li>';
+
+  const por = {};
+  E.reportes.forEach(r => {
+    if (!r.autor) return;
+    const k = r.autor.toLowerCase();
+    por[k] = por[k] || { nombre: r.autor, n: 0, arr: 0 };
+    por[k].n++;
+    if (r.estado === 'arreglado') por[k].arr++;
+  });
+  const top = Object.values(por).sort((a, b) => b.n - a.n || b.arr - a.arr).slice(0, 5);
+  const max = top.length ? top[0].n : 1;
+  const rank = top.map((p, i) => `<li style="--i:${i}">
+      <span class="pos">${i + 1}</span>${avatarHTML(p.nombre)}
+      <div class="rk-cuerpo"><b>${esc(p.nombre)}</b>
+        <span class="barra-rk"><span style="width:${Math.round(p.n / max * 100)}%"></span></span></div>
+      <span class="rk-n" title="${p.arr} arreglados">${p.n}<small>${p.arr ? ` · ${p.arr} ✓` : ''}</small></span>
+    </li>`).join('') || '<li class="lat-vacio">Cuando la gente reporte, aparece acá.</li>';
+
+  const html = act + '§' + rank;
+  if (html === lateralPrevio) return;
+  lateralPrevio = html;
+  $('#actividad').innerHTML = act;
+  $('#ranking').innerHTML = rank;
 }
 
 function vacioHTML() {
@@ -652,7 +718,7 @@ function tarjetaHTML(r, i = 0) {
   return `<div class="tarjeta${E.recien === r.id ? ' recien' : ''}" style="--i:${Math.min(i, 10)}" data-id="${r.id}" tabindex="0" role="button" ${E.api.sesion.admin ? 'draggable="true"' : ''}>
     ${miniatura(r, '')}
     <div class="t"><span class="num">#${r.id}</span> ${esc(r.titulo)}</div>
-    ${r.donde ? `<div class="s">${esc(r.donde)}</div>` : ''}
+    <div class="s quien-t">${avatarHTML(r.autor, 'av-chico')}<b>${esc(r.autor || 'Anónimo')}</b> · <i class="hace" data-hace="${esc(r.creado)}">${hace(r.creado)}</i></div>
     <div class="pie">${pillGrav(r.gravedad)}<span class="datos">
       <span class="dato">${ic('pulgar')}${r.votos || 0}</span>
       ${r.n_comentarios ? `<span class="dato">${ic('mensaje')}${r.n_comentarios}</span>` : ''}
@@ -682,6 +748,8 @@ function aplicar(nuevo) {
   if (!nuevo || nuevo.id == null) return;
   const i = E.reportes.findIndex(r => r.id === nuevo.id);
   const viejo = i >= 0 ? E.reportes[i] : null;
+  // El tiempo real repite los cambios que uno mismo acaba de hacer: si no cambió nada, no se redibuja (evita parpadeos).
+  if (viejo && Object.keys(nuevo).every(k => JSON.stringify(nuevo[k]) === JSON.stringify(viejo[k]))) return;
   if (i >= 0) E.reportes[i] = Object.assign({}, viejo, nuevo); else E.reportes.unshift(nuevo);
   const cambioEstado = viejo && viejo.estado !== nuevo.estado;
 
@@ -749,8 +817,8 @@ function renderDetalle(primeraVez = false) {
   cuerpo.innerHTML = `
     <h2 class="det-tit">${esc(r.titulo)}</h2>
     <div class="det-meta">
-      <span>${ic('usuario')}${r.autor ? esc(r.autor) : 'Anónimo'}</span>
-      <span title="${esc(fechaLarga(r.creado))}">${ic('reloj')}Reportado ${hace(r.creado)}</span>
+      <span class="det-autor">${avatarHTML(r.autor, 'av-chico')}Reportado por <b>${esc(r.autor || 'Anónimo')}</b></span>
+      <span title="${esc(fechaLarga(r.creado))}">${ic('reloj')}${hace(r.creado)}</span>
       ${r.cerrado ? `<span title="${esc(fechaLarga(r.cerrado))}">${ic('checkCirculo')}${r.estado === 'arreglado' ? 'Arreglado' : 'Cerrado'} ${hace(r.cerrado)}</span>` : ''}
     </div>
 
@@ -806,7 +874,7 @@ function renderDetalle(primeraVez = false) {
     <div class="comentarios" id="comLista">${comentariosPrevios ?? '<p class="com-vacio">Cargando…</p>'}</div>
     ${E.api.sesion.id ? `
     <form class="com-form" id="comForm">
-      <span class="avatar" title="${esc(E.api.sesion.usuario)}">${esc(E.api.sesion.usuario.charAt(0))}</span>
+      ${avatarHTML(E.api.sesion.usuario, 'avatar')}
       <textarea class="campo" id="comTexto" rows="1" maxlength="1500" placeholder="${abierto ? 'Agregá un dato, si te sigue pasando…' : 'Comentar…'}" required></textarea>
       <button class="btn principal" type="submit" id="comEnviar">${ic('enviar')}Enviar</button>
     </form>` : `
@@ -841,7 +909,7 @@ function pintarComentarios(lista) {
   const admin = E.api.sesion.admin;
   cont.innerHTML = lista.map(c => `
     <div class="comentario${c.es_admin ? ' staff' : ''}">
-      <span class="avatar">${esc((c.autor || '?').trim().charAt(0) || '?')}</span>
+      ${avatarHTML(c.autor, 'avatar')}
       <div class="com-cuerpo">
         <div class="com-cab"><b>${esc(c.autor || 'Anónimo')}</b>${c.es_admin ? '<span class="etq-staff">Staff</span>' : ''}
           <span title="${esc(fechaLarga(c.creado))}">${hace(c.creado)}</span>
@@ -1281,7 +1349,7 @@ function pintarSesion() {
   document.body.classList.toggle('con-cuenta', !!s.id);
   const b = $('#btnCuenta');
   if (s.id) {
-    b.innerHTML = `<span class="avatar chico">${esc(s.usuario.charAt(0))}</span><span class="txt">${esc(s.usuario)}</span>`
+    b.innerHTML = `${avatarHTML(s.usuario, 'avatar chico')}<span class="txt">${esc(s.usuario)}</span>`
       + `${s.admin ? '<span class="etq-staff">Admin</span>' : ''}${ic('abajo', 'flecha')}`;
     b.title = 'Tu cuenta';
     b.classList.remove('principal-suave');
@@ -1469,7 +1537,7 @@ function conectar() {
     const el = ev.target.closest('[data-id]');
     if (el) abrirDetalle(Number(el.dataset.id));
   };
-  ['#lista', '#tablero'].forEach(s => {
+  ['#lista', '#tablero', '#actividad'].forEach(s => {
     $(s).addEventListener('click', abrirDesde);
     $(s).addEventListener('keydown', ev => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('[data-id]')) { ev.preventDefault(); abrirDesde(ev); } });
   });
@@ -1571,8 +1639,11 @@ function conectar() {
   });
   window.addEventListener('hashchange', abrirDesdeHash);
 
-  // Las fechas relativas ("hace 5 minutos") se refrescan solas.
-  setInterval(() => { if (!document.hidden && !E.cargando && !document.querySelector('dialog[open]')) render(); }, 60000);
+  // Las fechas relativas ("hace 5 minutos") se refrescan solas, sin redibujar la lista.
+  setInterval(() => {
+    if (document.hidden) return;
+    $$('[data-hace]').forEach(el => { const t = hace(el.dataset.hace); if (el.textContent !== t) el.textContent = t; });
+  }, 60000);
 }
 
 /* ───────────── Arranque ───────────── */
@@ -1589,16 +1660,28 @@ async function iniciar() {
     `<label class="chip"><input type="radio" name="categoria" value="${esc(c.id)}"><span>${ic(iconoCat(c))}${esc(c.nombre)}</span></label>`).join('');
   $('#chipsCat').addEventListener('change', () => $('#chipsCat').classList.remove('invalido'));
   $('#rapidoCats').innerHTML = CFG.categorias.map(c =>
-    `<label class="chip"><input type="radio" name="rcat" value="${esc(c.id)}"><span>${ic(iconoCat(c))}<em class="n-largo">${esc(c.nombre)}</em><em class="n-corto">${esc(c.nombre.split(' / ')[0])}</em></span></label>`).join('');
+    `<label class="chip baldosa" title="${esc(c.nombre)}"><input type="radio" name="rcat" value="${esc(c.id)}"><span>${ic(iconoCat(c))}<em>${esc(c.nombre.split(' / ')[0])}</em></span></label>`).join('');
 
   conectar();
 
-  const configurado = !!(CFG.supabaseUrl && CFG.supabaseAnonKey);
+  // Con "?demo" en la dirección se usa el modo demo aunque haya Supabase (para probar sin tocar datos reales).
+  const forzarDemo = new URLSearchParams(location.search).has('demo');
+  const configurado = !!(CFG.supabaseUrl && CFG.supabaseAnonKey) && !forzarDemo;
   if (configurado && !(window.supabase && window.supabase.createClient)) {
     E.api = apiDemo(); // solo para poder pintar
     E.cargando = false; E.error = 'No se pudo cargar la librería de Supabase (¿bloqueador de anuncios o sin internet?).';
     render(); return;
   }
+  // Las secciones aparecen suavemente cuando entran en pantalla (una sola vez).
+  const revelar = $$('.revelar');
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => es.forEach(en => {
+      if (en.isIntersecting) { en.target.classList.add('visible'); io.unobserve(en.target); }
+    }), { threshold: 0.08 });
+    revelar.forEach(el => io.observe(el));
+    setTimeout(() => revelar.forEach(el => el.classList.add('visible')), 2500); // por las dudas
+  } else revelar.forEach(el => el.classList.add('visible'));
+
   E.api = configurado ? apiSupabase() : apiDemo();
   $('#avisoDemo').hidden = configurado;
   try { await E.api.iniciar(); } catch (e) { console.warn('[reportes] sesión', e); }

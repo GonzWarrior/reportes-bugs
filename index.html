@@ -28,6 +28,10 @@
           <div class="menu" id="menuCuenta" role="menu" hidden>
             <div class="menu-cab">Conectado como <b id="menuUsuario"></b></div>
             <button type="button" role="menuitem" data-menu="mios"><span data-icono="lista"></span>Mis reportes</button>
+            <div class="menu-titulo solo-admin">Administración</div>
+            <button type="button" role="menuitem" data-menu="admin" class="solo-admin" id="btnExportar"><span data-icono="bajar"></span>Exportar a CSV</button>
+            <button type="button" role="menuitem" data-menu="admin" class="solo-admin" id="btnImportar"><span data-icono="subir"></span>Importar CSV (Notion)</button>
+            <div class="menu-sep"></div>
             <button type="button" role="menuitem" data-menu="salir"><span data-icono="salir"></span>Salir</button>
           </div>
         </div>
@@ -54,7 +58,7 @@
 
       <form class="rapido" id="formRapido" novalidate>
         <div class="rapido-cab">
-          <span class="insignia flota"><span data-icono="bug"></span></span>
+          <span class="insignia"><span data-icono="bug"></span></span>
           <div><b>Reportalo en 3 toques</b><span>Escribí qué pasó, elegí el tema y listo.</span></div>
         </div>
         <label class="rapido-paso"><span class="paso-n">1</span>¿Qué pasó?</label>
@@ -76,6 +80,7 @@
       </div>
     </div>
 
+    <div class="contenido revelar">
     <main class="panel" id="reportes">
       <div class="barra">
         <nav class="pestanas" id="pestanas" aria-label="Secciones"></nav>
@@ -105,14 +110,24 @@
           <option value="media">Media</option>
           <option value="baja">Baja</option>
         </select>
-        <button class="btn solo-admin" id="btnExportar" type="button" title="Bajar los reportes en CSV"><span data-icono="bajar"></span>Exportar</button>
-        <button class="btn solo-admin" id="btnImportar" type="button" title="Importar un CSV (por ejemplo, de Notion)"><span data-icono="subir"></span>Importar</button>
         <input type="file" id="archivoCSV" accept=".csv,text/csv" hidden>
       </div>
 
       <div id="lista" class="lista" aria-live="polite"></div>
       <div id="tablero" class="tablero" hidden></div>
     </main>
+
+    <aside class="lateral">
+      <section class="tarjeta-lateral">
+        <h3><span data-icono="reloj"></span>Actividad reciente<span class="en-vivo"><span class="punto vivo"></span>En vivo</span></h3>
+        <ol class="actividad" id="actividad"></ol>
+      </section>
+      <section class="tarjeta-lateral">
+        <h3><span data-icono="usuario"></span>Los que más reportan</h3>
+        <ol class="ranking" id="ranking"></ol>
+      </section>
+    </aside>
+    </div>
 
     <footer class="pie-pagina" id="pie">La lista se actualiza sola cuando el staff cambia un reporte.</footer>
   </div>
