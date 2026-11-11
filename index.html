@@ -79,10 +79,35 @@
       </div>
     </div>
 
+    <section class="tiras revelar" id="stats" aria-label="Estado de los reportes">
+      <button type="button" class="tira chip-stat est-pendiente" data-pestana="abiertos">
+        <span class="tira-ic"><span class="punto"></span></span>
+        <span class="tira-txt"><b id="stPendiente">0</b><span>Pendientes</span></span>
+      </button>
+      <button type="button" class="tira chip-stat est-en_progreso" data-pestana="abiertos">
+        <span class="tira-ic"><span class="punto"></span></span>
+        <span class="tira-txt"><b id="stEn_progreso">0</b><span>En progreso</span></span>
+      </button>
+      <button type="button" class="tira chip-stat est-arreglado" data-pestana="arreglados">
+        <span class="tira-ic"><span class="punto"></span></span>
+        <span class="tira-txt"><b id="stArreglado">0</b><span>Arreglados</span></span>
+      </button>
+      <div class="tira tira-progreso">
+        <div class="progreso-cab"><span>Avance</span><b id="stPorc">0%</b></div>
+        <div class="progreso-barra"><span id="stBarra"></span></div>
+        <small id="stSemana"></small>
+      </div>
+      <span hidden id="stDescartado"></span>
+    </section>
+
     <div class="contenido revelar">
     <main class="panel" id="reportes">
       <div class="barra">
         <nav class="pestanas" id="pestanas" aria-label="Secciones"></nav>
+        <div class="vistas" role="group" aria-label="Vista">
+          <button type="button" data-vista="lista" title="Ver como lista"><span data-icono="lista"></span></button>
+          <button type="button" data-vista="tablero" title="Ver como tablero por estado"><span data-icono="tablero"></span></button>
+        </div>
       </div>
 
       <div class="herramientas">
@@ -105,10 +130,6 @@
           <option value="media">Media</option>
           <option value="baja">Baja</option>
         </select>
-        <div class="vistas" role="group" aria-label="Vista">
-          <button type="button" data-vista="lista" title="Ver como lista"><span data-icono="lista"></span></button>
-          <button type="button" data-vista="tablero" title="Ver como tablero por estado"><span data-icono="tablero"></span></button>
-        </div>
         <input type="file" id="archivoCSV" accept=".csv,text/csv" hidden>
       </div>
 
@@ -117,20 +138,6 @@
     </main>
 
     <aside class="lateral">
-      <section class="tarjeta-lateral">
-        <h3><span data-icono="tablero"></span>Estado de los reportes</h3>
-        <div class="resumen-lat" id="stats" aria-label="Resumen">
-          <button type="button" class="chip-stat est-pendiente" data-pestana="abiertos"><span class="punto"></span>Pendientes<b id="stPendiente">0</b></button>
-          <button type="button" class="chip-stat est-en_progreso" data-pestana="abiertos"><span class="punto"></span>En progreso<b id="stEn_progreso">0</b></button>
-          <button type="button" class="chip-stat est-arreglado" data-pestana="arreglados"><span class="punto"></span>Arreglados<b id="stArreglado">0</b></button>
-          <span hidden id="stDescartado"></span>
-        </div>
-        <div class="progreso-lat">
-          <div class="progreso-cab"><span>Arreglados</span><b id="stPorc">0%</b></div>
-          <div class="progreso-barra"><span id="stBarra"></span></div>
-          <small id="stSemana"></small>
-        </div>
-      </section>
       <section class="tarjeta-lateral">
         <h3><span data-icono="reloj"></span>Actividad reciente<span class="en-vivo"><span class="punto vivo"></span>En vivo</span></h3>
         <ol class="actividad" id="actividad"></ol>

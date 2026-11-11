@@ -621,7 +621,7 @@ function filaHTML(r, i = 0) {
   const descartado = r.estado === 'descartado' ? ' est-descartado-txt' : '';
   const autor = r.autor || 'Anónimo';
   const foto = r.fotos && r.fotos[0];
-  return `<div class="fila${E.recien === r.id ? ' recien' : ''}" style="--i:${Math.min(i, 14)}" data-id="${r.id}" tabindex="0" role="button" aria-label="Abrir reporte ${r.id}: ${esc(r.titulo)}, de ${esc(autor)}">
+  return `<div class="fila${E.recien === r.id ? ' recien' : ''}${E.llego === r.id ? ' llego' : ''}" style="--i:${Math.min(i, 14)}" data-id="${r.id}" tabindex="0" role="button" aria-label="Abrir reporte ${r.id}: ${esc(r.titulo)}, de ${esc(autor)}">
     ${avatarHTML(autor, 'av-fila')}
     <div class="fila-cuerpo">
       <div class="fila-tit"><span class="txt${descartado}">${esc(r.titulo)}</span></div>
@@ -645,6 +645,7 @@ function filaHTML(r, i = 0) {
 
 /* Panel lateral: lo último que pasó y quiénes más reportan. Solo se repinta si cambió algo. */
 let lateralPrevio = '';
+const eventosVistos = new Set();
 function renderLateral() {
   const ev = [];
   E.reportes.forEach(r => {
@@ -657,7 +658,10 @@ function renderLateral() {
   const act = ev.slice(0, 7).map(e => {
     const staff = e.tipo !== 'nuevo';
     const quien = staff ? 'Staff' : (e.r.autor || 'Anónimo');
-    return `<li data-id="${e.r.id}" tabindex="0" role="button" class="ev-${e.tipo}">
+    const clave = e.tipo + ':' + e.r.id;
+    const esNuevo = lateralPrevio && !eventosVistos.has(clave);
+    eventosVistos.add(clave);
+    return `<li data-id="${e.r.id}" tabindex="0" role="button" class="ev-${e.tipo}${esNuevo ? ' ev-llega' : ''}">
       ${staff ? `<span class="av av-staff est-${e.tipo}">${ic(e.tipo === 'arreglado' ? 'check' : e.tipo === 'descartado' ? 'x' : 'escudo')}</span>` : avatarHTML(quien)}
       <div><p><b>${esc(quien)}</b> ${verbo[e.tipo]} <span class="ev-tit">${esc(e.r.titulo)}</span></p>
       <small><i class="hace" data-hace="${esc(e.t)}">${hace(e.t)}</i> · #${e.r.id}</small></div>
@@ -681,11 +685,14 @@ function renderLateral() {
       <span class="rk-n" title="${p.arr} arreglados">${p.n}<small>${p.arr ? ` · ${p.arr} ✓` : ''}</small></span>
     </li>`).join('') || '<li class="lat-vacio">Cuando la gente reporte, aparece acá.</li>';
 
-  const html = act + '§' + rank;
+  const html = (act + '§' + rank).replace(/ ev-llega/g, '');
   if (html === lateralPrevio) return;
+  const primera = !lateralPrevio;
   lateralPrevio = html;
   $('#actividad').innerHTML = act;
   $('#ranking').innerHTML = rank;
+  // Las animaciones de entrada solo la primera vez; después solo se anima lo nuevo.
+  $('.lateral').classList.toggle('primera', primera);
 }
 
 function vacioHTML() {
@@ -782,8 +789,35 @@ function quitar(id) {
 
 function alCambiarRemoto(tipo, nuevo, viejo) {
   if (tipo === 'DELETE') { if (viejo && viejo.id != null && buscar(viejo.id)) quitar(viejo.id); return; }
-  if (tipo === 'INSERT' && nuevo && !buscar(nuevo.id)) { E.reportes.unshift(nuevo); render(); return; }
+  if (tipo === 'INSERT' && nuevo && !buscar(nuevo.id)) { E.reportes.unshift(nuevo); marcarLlegada(nuevo); render(); return; }
+  if (nuevo && !buscar(nuevo.id)) { E.reportes.unshift(nuevo); render(); return; }
   aplicar(nuevo);
+}
+
+/* Un reporte nuevo de otra persona: destello en la lista y aviso. */
+function marcarLlegada(r) {
+  E.llego = r.id;
+  setTimeout(() => { if (E.llego === r.id) E.llego = null; }, 1800);
+  if (!E.api.sesion.id || r.user_id !== E.api.sesion.id) toast(`Nuevo reporte de ${r.autor || 'alguien'}: ${r.titulo}`, 'info');
+}
+
+/* Respaldo del tiempo real: cada 15 s (y al volver a la pestaña) trae la lista y aplica solo lo que cambió. */
+let sincronizando = false;
+async function sincronizar() {
+  if (sincronizando || E.cargando || E.error || document.hidden || !E.api) return;
+  sincronizando = true;
+  try {
+    const lista = await E.api.listar();
+    const ids = new Set(lista.map(r => r.id));
+    E.reportes.filter(r => !ids.has(r.id)).forEach(r => quitar(r.id));
+    const nuevos = lista.filter(r => !buscar(r.id));
+    if (nuevos.length) {
+      nuevos.forEach(r => { E.reportes.unshift(r); marcarLlegada(r); });
+      render();
+    }
+    lista.forEach(r => { if (!nuevos.includes(r)) aplicar(r); });
+  } catch (e) { console.warn('[reportes] sincronizar', e); }
+  finally { sincronizando = false; }
 }
 
 /* ───────────── Detalle ───────────── */
@@ -807,7 +841,10 @@ function renderDetalle(primeraVez = false) {
   const cuerpo = $('#detCuerpo');
   // Conservar lo que se esté escribiendo si llega una actualización en vivo.
   const borradores = {};
-  if (!primeraVez) ['admResp', 'comTexto', 'admTitulo'].forEach(k => { const x = $('#' + k); if (x) borradores[k] = x.value; });
+  if (!primeraVez) ['admResp', 'comTexto', 'admTitulo', 'admGrav', 'admCat'].forEach(k => { const x = $('#' + k); if (x) borradores[k] = x.value; });
+  const masAbierto = !primeraVez && $('#admMas') && $('#admMas').open;
+  if (primeraVez) E.estadoElegido = null;
+  const estadoElegido = E.estadoElegido || r.estado;
   const scroll = cuerpo.scrollTop;
   const comentariosPrevios = !primeraVez && $('#comLista') ? $('#comLista').innerHTML : null;
 
@@ -847,30 +884,23 @@ function renderDetalle(primeraVez = false) {
 
     ${admin ? `
     <section class="admin-panel">
-      <h3>${ic('escudo')}Administración</h3>
-      <div class="pila">
-        <div class="et">Estado <span class="ayuda">Al cambiarlo se mueve solo a su sección.</span>
-          <div class="segmento admin-estados">${LISTA_ESTADOS.map(e =>
-            `<button type="button" data-estado="${e}" class="est-${e}${r.estado === e ? ' activo' : ''}"><span class="punto"></span>${ESTADOS[e].nombre}</button>`).join('')}</div>
+      <div class="segmento admin-estados" role="radiogroup" aria-label="Estado">${LISTA_ESTADOS.map(e =>
+        `<button type="button" data-estado="${e}" class="est-${e}${estadoElegido === e ? ' activo' : ''}"><span class="punto"></span>${ESTADOS[e].nombre}</button>`).join('')}</div>
+      <textarea class="campo" id="admResp" rows="2" maxlength="2000" placeholder="Respuesta pública (opcional). Ej.: Arreglado en la actualización del 10/11.">${esc(r.respuesta || '')}</textarea>
+      <details class="admin-mas" id="admMas">
+        <summary>${ic('der')}Editar título, gravedad o tema</summary>
+        <div class="pila">
+          <input class="campo" id="admTitulo" maxlength="120" value="${esc(r.titulo)}" aria-label="Título">
+          <div class="dos">
+            <select class="campo" id="admGrav" aria-label="Gravedad">${Object.entries(GRAVEDADES).map(([k, g]) => `<option value="${k}" ${r.gravedad === k ? 'selected' : ''}>Gravedad: ${g.nombre}</option>`).join('')}</select>
+            <select class="campo" id="admCat" aria-label="Tema">${opcionesCategorias(r.categoria)}</select>
+          </div>
+          <button class="btn peligro chico" type="button" id="admBorrar">${ic('basura')}Eliminar reporte</button>
         </div>
-        <label class="et">Título
-          <input class="campo" id="admTitulo" maxlength="120" value="${esc(r.titulo)}">
-        </label>
-        <div class="dos">
-          <label class="et">Gravedad
-            <select class="campo" id="admGrav">${Object.entries(GRAVEDADES).map(([k, g]) => `<option value="${k}" ${r.gravedad === k ? 'selected' : ''}>${g.nombre}</option>`).join('')}</select>
-          </label>
-          <label class="et">Categoría
-            <select class="campo" id="admCat">${opcionesCategorias(r.categoria)}</select>
-          </label>
-        </div>
-        <label class="et">Respuesta pública <span class="opcional">(la ven todos)</span>
-          <textarea class="campo" id="admResp" rows="3" maxlength="2000" placeholder="Ej.: Arreglado en la actualización del 10/11. ¡Gracias por avisar!">${esc(r.respuesta || '')}</textarea>
-        </label>
-        <div class="fila-botones">
-          <button class="btn peligro" type="button" id="admBorrar">${ic('basura')}Eliminar reporte</button>
-          <button class="btn principal" type="button" id="admGuardar">${ic('guardar')}Guardar cambios</button>
-        </div>
+      </details>
+      <div class="admin-pie">
+        <span class="ayuda" id="admNota">${notaEstado(r, estadoElegido)}</span>
+        <button class="btn principal" type="button" id="admGuardar">${ic('guardar')}Guardar y cerrar</button>
       </div>
     </section>` : ''}
 
@@ -886,7 +916,22 @@ function renderDetalle(primeraVez = false) {
       <button class="btn" type="button" data-accion="entrar">${ic('usuario')}Entrar o crear cuenta</button></div>`}`;
 
   Object.entries(borradores).forEach(([k, v]) => { const x = $('#' + k); if (x) x.value = v; });
+  if (masAbierto) $('#admMas').open = true;
   if (!primeraVez) cuerpo.scrollTop = scroll;
+}
+
+function notaEstado(r, elegido) {
+  if (elegido === r.estado) return `Ahora: ${ESTADOS[r.estado].nombre}`;
+  const seMueve = PESTANA_DE_ESTADO[elegido] !== PESTANA_DE_ESTADO[r.estado];
+  return `Pasa a <b>${ESTADOS[elegido].nombre}</b>${seMueve ? ` y se mueve a ${PESTANAS[PESTANA_DE_ESTADO[elegido]].nombre}` : ''} al guardar`;
+}
+
+function elegirEstado(e) {
+  const r = buscar(E.abierto);
+  if (!r) return;
+  E.estadoElegido = e;
+  $$('.admin-estados [data-estado]').forEach(b => b.classList.toggle('activo', b.dataset.estado === e));
+  $('#admNota').innerHTML = notaEstado(r, e);
 }
 
 function opcionesCategorias(sel) {
@@ -954,11 +999,18 @@ async function guardarAdmin() {
   if (grav !== r.gravedad) cambios.gravedad = grav;
   if (cat !== r.categoria) cambios.categoria = cat;
   if (resp !== (r.respuesta || null)) cambios.respuesta = resp;
-  if (!Object.keys(cambios).length) { toast('No hay cambios para guardar.'); return; }
+  const estado = E.estadoElegido || r.estado;
+  if (estado !== r.estado) cambios.estado = estado;
+  if (!Object.keys(cambios).length) { $('#dlgDetalle').close(); return; }
   const btn = $('#admGuardar'); btn.disabled = true;
   try {
-    aplicar(await E.api.actualizar(r.id, cambios));
-    toast('Cambios guardados.', 'ok');
+    const act = await E.api.actualizar(r.id, cambios);
+    $('#dlgDetalle').close();          // primero se cierra, después se ve cómo se mueve en la lista
+    aplicar(act);
+    const seMovio = cambios.estado && PESTANA_DE_ESTADO[r.estado] !== PESTANA_DE_ESTADO[cambios.estado];
+    toast(cambios.estado
+      ? `#${r.id} → ${ESTADOS[cambios.estado].nombre}${seMovio ? ` · pasó a ${PESTANAS[PESTANA_DE_ESTADO[cambios.estado]].nombre}` : ''}`
+      : `#${r.id} guardado.`, 'ok');
   } catch (e) { toast(e.message, 'error'); }
   finally { const b = $('#admGuardar'); if (b) b.disabled = false; }
 }
@@ -1578,7 +1630,7 @@ function conectar() {
     const foto = ev.target.closest('[data-foto]');
     if (foto) { const r = buscar(E.abierto); if (r) abrirVisor(r.fotos, Number(foto.dataset.foto)); return; }
     const est = ev.target.closest('.admin-estados [data-estado]');
-    if (est) { cambiarEstado(E.abierto, est.dataset.estado); return; }
+    if (est) { elegirEstado(est.dataset.estado); return; }
     const bc = ev.target.closest('[data-borrar-com]');
     if (bc) { borrarComentario(Number(bc.dataset.borrarCom)); return; }
     if (ev.target.closest('[data-accion="entrar"]')) pedirCuenta(null, 'Entrá o creá tu cuenta para comentar.', 'entrar');
@@ -1709,6 +1761,9 @@ async function iniciar() {
   pintarSesion();
   await recargar();
   try { E.api.escuchar(alCambiarRemoto); } catch (e) { console.warn('[reportes] tiempo real', e); }
+  setInterval(sincronizar, 15000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) sincronizar(); });
+  window.addEventListener('focus', sincronizar);
   abrirDesdeHash();
 }
 
